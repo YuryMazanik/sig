@@ -3,200 +3,242 @@
 
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Своя Игра - Многопользовательская с сохранением состояния</title>
 	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
 	<style>
-		/* Определяем CSS-переменные для ТВ-стиля */
 		:root {
-			--primary: #ff2d55;
-			/* Яркий розово-красный */
-			--primary-dark: #c81e3c;
-			--secondary: #1c1c1e;
-			/* Темный для неиспользованных элементов */
-			--bg-color: #000;
-			/* Черный фон для атмосферы шоу */
-			--text-color: #ffffff;
-			--neon-blue: #00aaff;
-			--neon-purple: #aa00ff;
-			--neon-glow: rgba(255, 255, 255, 0.8);
-			--font-main: 'Montserrat', sans-serif;
-		}
+    --primary: #0b0f1a;
+    --secondary: #1c2233;
+    --accent: #ffcc00;
+    --accent-hover: #ffe066;
+    --used: #3a3f55;
+    --text-light: #f8f8f8;
+    --text-dark: #1a1a1a;
+    --border-radius: 10px;
+    --transition: 0.3s ease;
+    --glow: 0 0 10px rgba(255, 204, 0, 0.6);
+}
 
-		/* Основные стили */
-		body {
-			font-family: var(--font-main);
-			background: var(--bg-color);
-			color: var(--text-color);
-			margin: 0;
-			padding: 0;
-		}
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top left, #0b0f1a, #121826);
+    color: var(--text-light);
+}
 
-		header {
-			background: linear-gradient(45deg, var(--neon-purple), var(--neon-blue));
-			text-align: center;
-			padding: 20px;
-			text-transform: uppercase;
-			letter-spacing: 2px;
-			font-size: 2em;
-			box-shadow: 0 0 20px var(--neon-glow);
-		}
+.container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
 
-		.container {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
-			gap: 20px;
-			padding: 20px;
-		}
+.board {
+    display: flex;
+    border-radius: var(--border-radius);
+    flex-direction: column;
+	margin: 10px;
+}
+.row {
+	display: inline-flex;
+}
+.cell {
+    background: var(--accent);
+    color: var(--text-dark);
+    font-weight: bold;
+    font-size: 22px;
+    text-align: center;
+	align-content: center;
+    padding: 15px;
+    margin: 2px;    
+	width: 50px;
+    height: 50px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--glow);
+}
 
-		/* Стили игрового поля */
-		.board {
-			display: grid;
-			/* grid-template-columns: repeat(6, minmax(120px, 1fr)); */
-			gap: 10px;
-			background: #111;
-			padding: 15px;
-			border: 2px solid var(--neon-blue);
-			border-radius: 15px;
-			box-shadow: 0 0 15px var(--neon-glow);
-			width: 100%;
-			max-width: 1000px;
-		}
+.cell:not(.header) {
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
 
-		.cell {
-			background: var(--primary);
-			border-radius: 10px;
-			color: var(--text-color);
-			font-size: 1.5em;
-			font-weight: bold;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			cursor: pointer;
-			transition: transform 0.2s ease, box-shadow 0.3s ease;
-			box-shadow: 0 0 10px var(--neon-blue);
-			min-height: 80px;
-		}
+.cell:hover:not(.header) {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 255, 150, 0.8);
+}
 
-		.cell:hover {
-			transform: scale(1.05);
-			box-shadow: 0 0 20px var(--neon-blue);
-		}
+.cell.used {
+    background: var(--used);
+    color: #aaa;
+    cursor: default;
+    box-shadow: none;
+}
 
-		.cell.used {
-			background: var(--secondary);
-			box-shadow: none;
-			cursor: default;
-		}
+.cell.header {
+    background: white;
+	width: 260px;
+}
 
-		/* Таблица лидеров */
-		.leaderboard {
-			background: #111;
-			padding: 20px;
-			width: 300px;
-			border: 2px solid var(--neon-purple);
-			border-radius: 10px;
-			box-shadow: 0 0 20px var(--neon-glow);
-		}
+.leaderboard {
+    background: var(--secondary);
+    padding: 24px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+    margin: 10px;
+    min-width: 200px;
+	max-width: 300px;
+}
 
-		.leaderboard h2 {
-			text-align: center;
-			margin: 0 0 15px;
-			font-size: 1.5em;
-		}
+.leaderboard h1,
+.leaderboard h2 {
+    margin: 0 0 12px;
+    color: var(--accent);
+    text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+}
 
-		.player {
-			display: flex;
-			justify-content: space-between;
-			padding: 8px 0;
-			border-bottom: 1px solid #333;
-		}
+.leaderboard .leaderboard__btn {
+	display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+}
 
-		.player:last-child {
-			border-bottom: none;
-		}
+.player {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #2b324a;
+    border-radius: var(--border-radius);
+    margin-bottom: 10px;
+}
 
-		.leaderboard button {
-			width: 48%;
-			border: none;
-			border-radius: 5px;
-			padding: 10px 15px;
-			background: var(--primary);
-			color: var(--text-color);
-			transition: background 0.3s ease, box-shadow 0.2s ease;
-		}
-		.leaderboard button:not(:last-child) {
-			margin-right: 5px;
-		}
+button {
+    background: var(--accent);
+    color: var(--text-dark);
+    border: none;
+    padding: 12px 24px;
+	margin: 3px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    box-shadow: var(--glow);
+}
 
-		.leaderboard button:hover {
-			background: var(--primary-dark);
-			box-shadow: 0 0 10px var(--neon-purple);
-		}
+button:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 255, 150, 0.8);
+}
 
-		/* Модальное окно для вопросов */
-		.modal {
-			display: none;
-			position: fixed;
-			z-index: 1000;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-			background-color: rgba(0, 0, 0, 0.8);
-		}
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(10, 10, 20, 0.85);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    box-sizing: border-box;
+}
 
-		.modal-content {
-			background: #222;
-			border: 1px solid var(--neon-purple);
-			border-radius: 10px;
-			padding: 20px;
-			width: 90%;
-			/* max-width: 600px; */
-			margin: 2% auto;
-			box-shadow: 0 0 25px var(--neon-glow);
-			position: relative;
-		}
+.modal.open {
+    display: flex;
+}
 
-		.close {
-			position: absolute;
-			top: 10px;
-			right: 25px;
-			font-size: 5em;
-			color: var(--neon-blue);
-			cursor: pointer;
-			transition: color 0.2s ease;
-		}
+.modal-content {
+    background: var(--secondary);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 70vw;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
 
-		.close:hover {
-			color: var(--primary);
-		}
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+	
+	.board {
+		display: block;
+		overflow-x: auto;
+	}
+	.leaderboard {
+		max-width: none;
+		width: 100%;
+	}
 
-		/* Кнопки модального окна и панели начисления очков */
-		#showAnswerBtn,
-		#modalControls button {
-			background: var(--primary);
-			border: none;
-			padding: 10px 15px;
-			border-radius: 5px;
-			color: var(--text-color);
-			transition: background 0.3s, box-shadow 0.3s;
-			font-size: 1em;
-			margin: 5px;
-			cursor: pointer;
-		}
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        padding: 20px;
+    }
+    .close {
+        font-size: 56px;
+        top: 15px;
+        right: 20px;
+    }
+}
 
-		#showAnswerBtn:hover,
-		#modalControls button:hover {
-			background: var(--primary-dark);
-			box-shadow: 0 0 10px var(--neon-purple);
-		}
-		.questionText {
-			font-size: 45px;
-		}
-		.correctAnswer {
-			font-size: 30px;
-		}
+.close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    font-size: 48px; /* Было 28px */
+    cursor: pointer;
+    color: var(--accent);
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.close:hover {
+    transform: scale(1.2);
+}
+
+.questionText {
+    font-size: 20px;
+    margin: 20px 0;
+}
+
+.correctAnswer {
+    color: #00ff99;
+    font-size: 22px;
+    font-weight: bold;
+	display:none; 
+	font-weight:bold; 
+	margin:10px 0;
+}
+
+#modalControls {
+    margin-top: 20px;
+}
+
+#modalControls button {
+    margin-top: 10px;
+}
+
+.player-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+.player-controls span {
+    font-size: 26px;
+}
+.player-controls div button {
+    margin-left: 10px;
+}
+
 	</style>
 </head>
 
@@ -213,10 +255,10 @@
 			<div id="playersList">
 				<!-- Список игроков -->
 			</div>
-			<div style="display: flex; justify-content: space-between;">
+			<div class="leaderboard__btn">
 				<button onclick="addPlayer()">Добавить игрока</button>
 				<button onclick="nextRound()">Следующий раунд</button>
-				<button onclick="resetGame()">Сбросить игру</button>
+				<button class="btn-reset" onclick="resetGame()">Сбросить игру</button>
 			</div>
 		</div>
 	</div>
@@ -228,17 +270,14 @@
 			<h2 id="questionTitle">Вопрос</h2>
 			<p class="questionText">Текст вопроса</p>
 			<button id="showAnswerBtn" onclick="showAnswer()">Показать ответ</button>
-			<p class="correctAnswer" style="display:none; font-weight:bold; margin:10px 0;"></p>
-			<div id="modalControls" style="margin-top: 20px;">
+			<p class="correctAnswer"></p>
+			<div id="modalControls">
 				<!-- Панель начисления очков для игроков -->
 			</div>
 		</div>
 	</div>
 
 	<script>
-		/* Данные игры. Каждая категория содержит 5 вопросов */
-
-
 		const roundQuestion = [
 			[
 				{
@@ -248,27 +287,41 @@
 						{ value: 200, question: "В каком году произошла Октябрьская революция?", answer: "1917" },
 						{ value: 300, question: "Кто такой Ленин?", answer: "Революционер" },
 						{ value: 400, question: "Кто возглавлял СССР во время Второй мировой войны?", answer: "Сталин" },
-						{ value: 500, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
+						{ value: 500, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				},
 				{
-					title: "Наука",
+					title: "История2",
 					questions: [
-						{ value: 100, question: "Какое тело вращается вокруг Земли?", answer: "Луна" },
-						{ value: 200, question: "Кто открыл закон всемирного тяготения?", answer: "Ньютон" },
-						{ value: 300, question: "Что изучает космология?", answer: "Структуру вселенной" },
-						{ value: 400, question: "Как называется частица, обнаруженная в 2012 году в ЦЕРН?", answer: "Бозон Хиггса" },
-						{ value: 500, question: "Что такое молекула?", answer: "Соединение атомов" }
+						{ value: 100, question: "Кто был первым князем Древней Руси?", answer: "Рюрик" },
+						{ value: 200, question: "В каком году произошла Октябрьская революция?", answer: "1917" },
+						{ value: 300, question: "Кто такой Ленин?", answer: "Революционер" },
+						{ value: 400, question: "Кто возглавлял СССР во время Второй мировой войны?", answer: "Сталин" },
+						{ value: 500, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				},
 				{
-					title: "Литература",
+					title: "История3",
+					questions: [
+						{ value: 100, question: "Кто был первым князем Древней Руси?", answer: "Рюрик" },
+						{ value: 200, question: "В каком году произошла Октябрьская революция?", answer: "1917" },
+						{ value: 300, question: "Кто такой Ленин?", answer: "Революционер" },
+						{ value: 400, question: "Кто возглавлял СССР во время Второй мировой войны?", answer: "Сталин" },
+						{ value: 500, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
+					]
+				},
+				{
+					title: "Литературное вымя",
 					questions: [
 						{ value: 100, question: "Кто написал 'Война и мир'?", answer: "Толстой" },
 						{ value: 200, question: "Автор 'Преступления и наказания'?", answer: "Достоевский" },
 						{ value: 300, question: "Кто автор поэмы 'Руслан и Людмила'?", answer: "Пушкин" },
 						{ value: 400, question: "Кто придумал Шерлока Холмса?", answer: "Конан Дойл" },
-						{ value: 500, question: "Кто написал 'Мастер и Маргарита'?", answer: "Булгаков" }
+						{ value: 500, question: "Кто написал 'Мастер и Маргарита'?", answer: "Булгаков" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				},
 				{
@@ -278,7 +331,8 @@
 						{ value: 200, question: "Как называется чемпионат мира по футболу?", answer: "Чемпионат мира" },
 						{ value: 300, question: "В каком виде спорта используется клюшка и шайба?В каком виде спорта используется клюшка и шайба?", answer: "Хоккей" },
 						{ value: 400, question: "Кто выиграл чемпионат мира 2018 по футболу?", answer: "Франция" },
-						{ value: 500, question: "Кто является рекордсменом по золотым медалям на Олимпийских играх?", answer: "Майкл Фелпс" }
+						{ value: 500, question: "Кто является рекордсменом по золотым медалям на Олимпийских играх?", answer: "Майкл Фелпс" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				},
 				{
@@ -289,7 +343,7 @@
 						{ value: 300, question: "Самая длинная река в мире?", answer: "Нил" },
 						{ value: 400, question: "Какой океан самый большой?", answer: "Тихий океан" },
 						{ value: 500, question: "Какая страна имеет самую большую численность населения?", answer: "Китай" },
-						{ value: 400, question: "На 1 вопрос больше", answer: "Да" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				},
 				{
@@ -299,7 +353,8 @@
 						{ value: 200, question: "Какой фильм получил Оскар в 2020 году?", answer: "Паразиты" },
 						{ value: 300, question: "Кто сыграл Джеймса Бонда в 'Казино Рояль'?", answer: "Дэниел Крейг" },
 						{ value: 400, question: "Кто снял 'Темного рыцаря'?", answer: "Кристофер Нолан" },
-						{ value: 500, question: "Какой фильм считается классикой по версии киноакадемии?", answer: "Крестный отец" }
+						{ value: 500, question: "Какой фильм считается классикой по версии киноакадемии?", answer: "Крестный отец" },
+						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
 					]
 				}
 			],
@@ -321,7 +376,7 @@
 						{ value: 200, question: "Кто открыл закон всемирного тяготения?", answer: "Ньютон" },
 						{ value: 300, question: "Что изучает космология?", answer: "Структуру вселенной" },
 						{ value: 400, question: "Как называется частица, обнаруженная в 2012 году в ЦЕРН?", answer: "Бозон Хиггса" },
-						{ value: 500, question: "Что такое молекула?", answer: "Соединение атомов" }
+						{ value: 500, question: "Что такое молекула?", answer: "Соединение атомов" },
 					]
 				}
 			]
@@ -345,7 +400,7 @@
 		let currentQuestion = null;
 		let currentCategoryIndex = null;
 		let currentQuestionIndex = null;
-		let answeredPlayers = {}; // Для отслеживания начисления очков за вопрос
+		let finishQuestion = false; // Для отслеживания начисления очков за вопрос
 
 		/* Функции сохранения состояния */
 		function savePlayers() {
@@ -361,41 +416,33 @@
 			const board = document.getElementById("gameBoard");
 			const countColumn = categories.length;
 			board.innerHTML = "";
-			board.style.gridTemplateColumns = 'repeat(' + countColumn + ', minmax(120px, 1fr))';
+			categories.forEach((cat, catIndex) => {
+				
+				const row = document.createElement('div');
+				row.className = 'row';
 
+				const headerCell = document.createElement('div');
+				headerCell.className = 'cell header';
+				headerCell.textContent = cat.title;
+				row.appendChild(headerCell);
 
-			// Верхняя строка с названиями категорий
-			categories.forEach(cat => {
-				const cell = document.createElement("div");
-				cell.className = "cell";
-				cell.style.background = "var(--secondary)";
-				cell.style.fontSize = "16px";
-				cell.textContent = cat.title;
-				board.appendChild(cell);
-			});
-			
-			// Определим максимальное количество вопросов среди всех категорий
-			const maxLength = Math.max(...categories.map(cat => cat.questions.length));
+				cat.questions.forEach((q, qIndex) => {
+					const qId = currentRound + "-" + catIndex + "-" + qIndex;
+					const cell = document.createElement('div');
+					cell.className = 'cell';
+					cell.textContent = q.value;
 
-			// Проходим по строкам (по индексам вопросов)
-			for (let i = 0; i < maxLength; i++) {
-				categories.forEach((cat, catIndex) => {
-					const key = currentRound + "-" + catIndex + "-" + i;
-					const question = cat.questions[i];
-					const cell = document.createElement("div");
-					cell.className = "cell";
-					cell.textContent = question ? question.value : ""; // Пустая ячейка, если нет значения
-					
-					if (usedQuestions[key] || !question) {
+					if (usedQuestions[qId]) {
 						cell.classList.add("used");
-						cell.onclick = function () { openQuestion(catIndex, i, cell); };
+						cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
 					} else {
-						cell.onclick = function () { openQuestion(catIndex, i, cell); };
+						cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
 					}
 
-					board.appendChild(cell);
+					row.appendChild(cell);
 				});
-			}
+				board.appendChild(row);
+			});
 		}
 
 		/* Открытие модального окна с вопросом */
@@ -403,6 +450,7 @@
 			currentCategoryIndex = catIndex;
 			currentQuestionIndex = qIndex;
 			currentQuestion = categories[catIndex].questions[qIndex];
+
 
 			// Скрываем ранее показанный ответ
 			const correctAnswerEl = document.querySelector(".correctAnswer");
@@ -413,41 +461,37 @@
 			document.getElementById("questionTitle").textContent = categories[catIndex].title + " " + currentQuestion.value + " очков";
 			document.querySelector(".questionText").textContent = currentQuestion.question;
 
-			if(cellElem.classList.contains("used")) {
-				modalControls.innerHTML = "";
-			} else {
-				// Отмечаем вопрос как использованный и сохраняем состояние
-				usedQuestions[`${currentRound}-${catIndex}-${qIndex}`] = true;
-				saveUsedQuestions();
-				answeredPlayers = {}; // сброс отметок для нового вопроса
-				updateModalControls();
-			}
-			
+			const qId = `${currentRound}-${catIndex}-${qIndex}`;
+			renderPlayerControls(qId);
+			saveUsedQuestions();
+		
 			cellElem.classList.add("used");
 
 			// Открываем модальное окно
-			document.getElementById("questionModal").style.display = "block";
+			document.getElementById("questionModal").classList.add('open');
 		}
 
 		/* Обновление панели управления в модальном окне */
-		function updateModalControls() {
+		function renderPlayerControls(qId) {
+			let isUsed = false;
 			modalControls.innerHTML = "";
+
+			if(typeof usedQuestions[qId] === 'undefined') {
+				usedQuestions[qId] = {};
+			} else {
+				isUsed = true;
+			}
+
 			players.forEach((player, index) => {
 				const container = document.createElement("div");
-				container.id = "player-controls-" + player.id;
-				container.style.marginBottom = "10px";
-				container.style.display = "flex";
-				container.style.justifyContent = "flex-end";
-				container.style.alignItems = "center";
+				container.classList.add('player-controls');
 
 				const spanName = document.createElement("span");
-				spanName.style.fontSize = "6vh";
 				spanName.textContent = player.name;
 				container.appendChild(spanName);
 
 				const spanScore = document.createElement("span");
 				spanScore.style.margin = "0 10px";
-				spanScore.style.fontSize = "6vh";
 				spanScore.textContent = player.score;
 				container.appendChild(spanScore);
 
@@ -456,41 +500,60 @@
 				btnCorrect.textContent = "Правильно";
 				btnCorrect.style.marginLeft = "10px";
 				btnCorrect.onclick = function () {
-					if (!answeredPlayers[player.id]) {
+					if (typeof usedQuestions[qId][player.id] === 'undefined') {
 						updateScore(player.id, currentQuestion.value);
 
 						spanScore.textContent = Number(spanScore.textContent) + Number(currentQuestion.value); //добавление очков визуально
 						spanScore.style.color = "green";
-
-						answeredPlayers[player.id] = true;
+						
+						usedQuestions[qId][player.id] = true;
+						saveUsedQuestions();
 						btnCorrect.disabled = true;
 						btnWrong.disabled = true;
 						btnCorrect.style.opacity = 0.5;
 						btnWrong.style.opacity = 0.1;
 					}
 				};
-				btnContainer.appendChild(btnCorrect);
 
 				const btnWrong = document.createElement("button");
 				btnWrong.textContent = "Неправильно";
 				btnWrong.style.marginLeft = "10px";
 				btnWrong.onclick = function () {
-					if (!answeredPlayers[player.id]) {
+					if (typeof usedQuestions[qId][player.id] === 'undefined') {
 						updateScore(player.id, -currentQuestion.value);
 
 						spanScore.textContent = Number(spanScore.textContent) - Number(currentQuestion.value); //отнимает очки визуально
 						spanScore.style.color = "red";
 
-						answeredPlayers[player.id] = true;
+						usedQuestions[qId][player.id] = false;
+						saveUsedQuestions();
 						btnCorrect.disabled = true;
 						btnWrong.disabled = true;
 						btnCorrect.style.opacity = 0.1;
 						btnWrong.style.opacity = 0.5;
 					}
 				};
-				btnContainer.appendChild(btnWrong);
-				container.appendChild(btnContainer);
 
+				if (isUsed) {
+					spanScore.remove();
+					btnCorrect.disabled = true;
+					btnWrong.disabled = true;
+					if(typeof usedQuestions[qId][player.id] === 'undefined') {
+						btnCorrect.style.opacity = 0.1;
+						btnWrong.style.opacity = 0.1;
+					} else if(usedQuestions[qId][player.id]) {
+						btnCorrect.style.opacity = 0.5;
+						btnWrong.style.opacity = 0.1;
+					} else {
+						btnCorrect.style.opacity = 0.1;
+						btnWrong.style.opacity = 0.5;
+					}
+				}
+
+				btnContainer.appendChild(btnCorrect);
+				btnContainer.appendChild(btnWrong);
+
+				container.appendChild(btnContainer);
 				modalControls.appendChild(container);
 			});
 
@@ -513,7 +576,7 @@
 
 		/* Закрытие модального окна */
 		function closeModal() {
-			document.getElementById("questionModal").style.display = "none";
+			document.getElementById("questionModal").classList.remove('open');
 		}
 
 		/* Добавление игрока */
@@ -523,7 +586,6 @@
 				players.push({id: players.length+1,name: name, score: 0 });
 				savePlayers();
 				renderLeaderboard();
-				updateModalControls();
 			}
 		}
 
