@@ -512,6 +512,13 @@ button:hover {
 						btnWrong.disabled = true;
 						btnCorrect.style.opacity = 0.5;
 						btnWrong.style.opacity = 0.1;
+
+						let unUsedBtnList = document.querySelectorAll('.player-controls button:not([disabled])');
+						unUsedBtnList.forEach(btn => {
+							btn.disabled = true;
+							btn.style.opacity = 0.1;
+						});
+						
 					}
 				};
 
