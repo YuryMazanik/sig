@@ -303,6 +303,7 @@ body {
 /* BACKGROUND END */
 
 	</style>
+	<script src="https://www.youtube.com/iframe_api"></script>
 </head>
 
 <body>
@@ -523,16 +524,40 @@ body {
 			document.querySelector(".questionText").textContent = currentQuestion.question;
 
 			// 1. Обработка видео YouTube
+			// 1. Обработка видео YouTube с автоматическим зацикливанием отрывка
 			const videoContainer = document.getElementById("videoContainer");
 			const videoId = getYouTubeId(currentQuestion.youtube);
 
 			if (videoId) {
-				let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&fs=0&showinfo=0&controls=0&enablejsapi=1`;
-				if (currentQuestion.start) embedUrl += `&start=${currentQuestion.start}`;
-				if (currentQuestion.end) embedUrl += `&end=${currentQuestion.end}`;
-
-				videoContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+				// Создаем пустой элемент-контейнер для плеера
+				videoContainer.innerHTML = '<div id="yt-player"></div>';
 				videoContainer.style.display = "block";
+
+				// Инициализируем плеер через YouTube API
+				new YT.Player('yt-player', {
+					height: '100%',
+					width: '100%',
+					videoId: videoId,
+					playerVars: {
+						'autoplay': 1,
+						'controls': 0,      // Скрываем управление
+						'rel': 0,
+						'showinfo': 0,
+						'fs': 0,            // Отключаем кнопку во весь экран
+						'start': currentQuestion.start || 0,
+						'end': currentQuestion.end || undefined
+					},
+					events: {
+						'onStateChange': function(event) {
+							// Состояние 0 означает, что видео закончилось (дойдя до параметра end)
+							if (event.data === YT.PlayerState.ENDED) {
+								// Перематываем на начало отрывка и запускаем снова
+								event.target.seekTo(currentQuestion.start || 0);
+								event.target.playVideo();
+							}
+						}
+					}
+				});
 			} else {
 				videoContainer.innerHTML = "";
 				videoContainer.style.display = "none";
