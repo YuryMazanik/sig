@@ -415,7 +415,7 @@ body {
 					title: "Кино",
 					questions: [
 						{ value: 100, question: "Из какого фильма этот легендарный момент?", answer: "Титаник", youtube: "https://www.youtube.com/watch?v=2e-eXJ6AvTM" },
-						{ value: 200, question: "Угадайте фильм по отрывку.", answer: "Паразиты", youtube: "https://youtu.be/5xH0HfJHsaY", start: 20, end: 45 },
+						{ value: 200, question: "Угадайте фильм по отрывку.", answer: "Паразиты", youtube: "https://youtu.be/5xH0HfJHsaY", start: 20, end: 25 },
 						{ value: 300, question: "Какое имя у этого персонажа?", answer: "Джеймс Бонд", youtube: "dQw4w9WgXcQ" },
 						{ value: 400, question: "Кто снял 'Темного рыцаря'?", answer: "Кристофер Нолан" },
 						{ value: 500, question: "Какой фильм считается классикой по версии киноакадемии?", answer: "Крестный отец" },
@@ -527,11 +527,11 @@ body {
 			const videoId = getYouTubeId(currentQuestion.youtube);
 
 			if (videoId) {
-				let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1`;
+				let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&fs=0&showinfo=0&controls=0&enablejsapi=1`;
 				if (currentQuestion.start) embedUrl += `&start=${currentQuestion.start}`;
 				if (currentQuestion.end) embedUrl += `&end=${currentQuestion.end}`;
 
-				videoContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+				videoContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
 				videoContainer.style.display = "block";
 			} else {
 				videoContainer.innerHTML = "";
