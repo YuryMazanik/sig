@@ -163,6 +163,43 @@ button:hover {
     overflow-y: auto;
 }
 
+/* Стили для адаптивного видео-контейнера */
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* Соотношение сторон 16:9 */
+    height: 0;
+    margin: 15px 0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: none; 
+}
+
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* Стили для адаптивного контейнера картинок */
+.image-container {
+    width: 100%;
+    text-align: center;
+    margin: 15px 0;
+    display: none;
+}
+
+.image-container img {
+    max-width: 100%;
+    max-height: 400px; /* Чтобы слишком высокие вертикальные картинки не растягивали экран */
+    object-fit: contain;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
 /* Мобильная адаптация */
 @media (max-width: 768px) {
 	
@@ -194,7 +231,7 @@ button:hover {
     position: absolute;
     top: 20px;
     right: 25px;
-    font-size: 48px; /* Было 28px */
+    font-size: 48px; 
     cursor: pointer;
     color: var(--accent);
     line-height: 1;
@@ -239,22 +276,44 @@ button:hover {
     margin-left: 10px;
 }
 
+/* BACKGROUND START */
+.animated-background {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    background: radial-gradient(circle at 20% 30%, rgb(44, 44, 44), transparent 60%),
+                radial-gradient(circle at 80% 70%, rgb(138, 124, 44), transparent 60%),
+                linear-gradient(120deg, #1e1e2f, #2a2a3f);
+    background-size: 200% 200%;
+    animation: backgroundFlow 20s ease infinite;
+    pointer-events: none;
+}
+@keyframes backgroundFlow {
+	0% { background-position: 0% 0%; }
+	50% { background-position: 100% 100%; }
+	100% { background-position: 0% 0%; }
+}
+body {
+	margin: 0;
+	font-family: 'Segoe UI', sans-serif;
+	transition: background 0.5s ease;
+}
+/* BACKGROUND END */
+
 	</style>
 </head>
 
 <body>
+	<div class="animated-background"></div>
+
 	<div class="container">
-		<!-- Игровое поле -->
-		<div class="board" id="gameBoard">
-			<!-- Категории и ячейки с вопросами создаются динамически -->
-		</div>
-		<!-- Таблица лидеров -->
+		<div class="board" id="gameBoard"></div>
 		<div class="leaderboard" id="leaderboard">
 			<h1 class="roundText"></h1>
 			<h2>Таблица лидеров</h2>
-			<div id="playersList">
-				<!-- Список игроков -->
-			</div>
+			<div id="playersList"></div>
 			<div class="leaderboard__btn">
 				<button onclick="addPlayer()">Добавить игрока</button>
 				<button onclick="nextRound()">Следующий раунд</button>
@@ -263,21 +322,24 @@ button:hover {
 		</div>
 	</div>
 
-	<!-- Модальное окно для вопроса -->
 	<div id="questionModal" class="modal">
 		<div class="modal-content">
 			<span class="close" onclick="closeModal()">&times;</span>
 			<h2 id="questionTitle">Вопрос</h2>
+			
+			<div class="video-container" id="videoContainer"></div>
+
+			<div class="image-container" id="imageContainer"></div>
+
 			<p class="questionText">Текст вопроса</p>
 			<button id="showAnswerBtn" onclick="showAnswer()">Показать ответ</button>
 			<p class="correctAnswer"></p>
-			<div id="modalControls">
-				<!-- Панель начисления очков для игроков -->
-			</div>
+			<div id="modalControls"></div>
 		</div>
 	</div>
 
 	<script>
+		// ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ С КАРТИНКАМИ СМ. В КАТЕГОРИИ "География" (первые 3 вопроса)
 		const roundQuestion = [
 			[
 				{
@@ -329,7 +391,7 @@ button:hover {
 					questions: [
 						{ value: 100, question: "Сколько игроков в футбольной команде?", answer: "11" },
 						{ value: 200, question: "Как называется чемпионат мира по футболу?", answer: "Чемпионат мира" },
-						{ value: 300, question: "В каком виде спорта используется клюшка и шайба?В каком виде спорта используется клюшка и шайба?", answer: "Хоккей" },
+						{ value: 300, question: "В каком видe спорта используется клюшка и шайба?", answer: "Хоккей" },
 						{ value: 400, question: "Кто выиграл чемпионат мира 2018 по футболу?", answer: "Франция" },
 						{ value: 500, question: "Кто является рекордсменом по золотым медалям на Олимпийских играх?", answer: "Майкл Фелпс" },
 						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
@@ -338,9 +400,12 @@ button:hover {
 				{
 					title: "География",
 					questions: [
-						{ value: 100, question: "Какая самая большая страна по территории?", answer: "Россия" },
-						{ value: 200, question: "Столица Франции?", answer: "Париж" },
-						{ value: 300, question: "Самая длинная река в мире?", answer: "Нил" },
+						// ПРИМЕР 1: Обычный вопрос с изображением по ссылке
+						{ value: 100, question: "Флаг какой страны изображен на картинке?", answer: "Канада", image: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Flag_of_Canada_%28Pantone%29.svg" },
+						// ПРИМЕР 2: Картинка из интернета
+						{ value: 200, question: "Какая достопримечательность показана на фото?", answer: "Эйфелева башня", image: "https://upload.wikimedia.org/wikipedia/commons/8/85/Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg" },
+						// ПРИМЕР 3: Можно комбинировать и фото, и текст (или оставить только фото, а текст сделать пустым "")
+						{ value: 300, question: "Что это за животное?", answer: "Капибара", image: "https://upload.wikimedia.org/wikipedia/commons/e/ec/Capybara_%28Hydrochoerus_hydrochaeris%29.jpg" },
 						{ value: 400, question: "Какой океан самый большой?", answer: "Тихий океан" },
 						{ value: 500, question: "Какая страна имеет самую большую численность населения?", answer: "Китай" },
 						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
@@ -349,9 +414,9 @@ button:hover {
 				{
 					title: "Кино",
 					questions: [
-						{ value: 100, question: "Кто режиссёр 'Титаника'?", answer: "Кэмерон" },
-						{ value: 200, question: "Какой фильм получил Оскар в 2020 году?", answer: "Паразиты" },
-						{ value: 300, question: "Кто сыграл Джеймса Бонда в 'Казино Рояль'?", answer: "Дэниел Крейг" },
+						{ value: 100, question: "Из какого фильма этот легендарный момент?", answer: "Титаник", youtube: "https://www.youtube.com/watch?v=2e-eXJ6AvTM" },
+						{ value: 200, question: "Угадайте фильм по отрывку.", answer: "Паразиты", youtube: "https://youtu.be/5xH0HfJHsaY", start: 20, end: 45 },
+						{ value: 300, question: "Какое имя у этого персонажа?", answer: "Джеймс Бонд", youtube: "dQw4w9WgXcQ" },
 						{ value: 400, question: "Кто снял 'Темного рыцаря'?", answer: "Кристофер Нолан" },
 						{ value: 500, question: "Какой фильм считается классикой по версии киноакадемии?", answer: "Крестный отец" },
 						{ value: 600, question: "Какой договор завершил Первую мировую войну?", answer: "Версальский договор" }
@@ -393,16 +458,21 @@ button:hover {
 		const categories = roundQuestion[currentRound];
 		const modalControls = document.getElementById("modalControls");
 
-		/* Загрузка сохранённых данных */
 		let players = JSON.parse(localStorage.getItem("players")) || [];
 		let usedQuestions = JSON.parse(localStorage.getItem("usedQuestions")) || {};
 
 		let currentQuestion = null;
 		let currentCategoryIndex = null;
 		let currentQuestionIndex = null;
-		let finishQuestion = false; // Для отслеживания начисления очков за вопрос
 
-		/* Функции сохранения состояния */
+		function getYouTubeId(url) {
+			if (!url) return null;
+			if (url.length === 11 && !url.includes('/') && !url.includes('?')) return url;
+			const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+			const match = url.match(regExp);
+			return (match && match[2].length === 11) ? match[2] : null;
+		}
+
 		function savePlayers() {
 			localStorage.setItem("players", JSON.stringify(players));
 		}
@@ -411,13 +481,10 @@ button:hover {
 			localStorage.setItem("usedQuestions", JSON.stringify(usedQuestions));
 		}
 
-		/* Инициализация игрового поля */
 		function initBoard() {
 			const board = document.getElementById("gameBoard");
-			const countColumn = categories.length;
 			board.innerHTML = "";
 			categories.forEach((cat, catIndex) => {
-				
 				const row = document.createElement('div');
 				row.className = 'row';
 
@@ -434,25 +501,19 @@ button:hover {
 
 					if (usedQuestions[qId]) {
 						cell.classList.add("used");
-						cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
-					} else {
-						cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
 					}
-
+					cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
 					row.appendChild(cell);
 				});
 				board.appendChild(row);
 			});
 		}
 
-		/* Открытие модального окна с вопросом */
 		function openQuestion(catIndex, qIndex, cellElem) {
 			currentCategoryIndex = catIndex;
 			currentQuestionIndex = qIndex;
 			currentQuestion = categories[catIndex].questions[qIndex];
 
-
-			// Скрываем ранее показанный ответ
 			const correctAnswerEl = document.querySelector(".correctAnswer");
 			correctAnswerEl.style.display = "none";
 			correctAnswerEl.textContent = "";
@@ -461,17 +522,40 @@ button:hover {
 			document.getElementById("questionTitle").textContent = categories[catIndex].title + " " + currentQuestion.value + " очков";
 			document.querySelector(".questionText").textContent = currentQuestion.question;
 
+			// 1. Обработка видео YouTube
+			const videoContainer = document.getElementById("videoContainer");
+			const videoId = getYouTubeId(currentQuestion.youtube);
+
+			if (videoId) {
+				let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1`;
+				if (currentQuestion.start) embedUrl += `&start=${currentQuestion.start}`;
+				if (currentQuestion.end) embedUrl += `&end=${currentQuestion.end}`;
+
+				videoContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+				videoContainer.style.display = "block";
+			} else {
+				videoContainer.innerHTML = "";
+				videoContainer.style.display = "none";
+			}
+
+			// 2. Обработка картинок / фотографий
+			const imageContainer = document.getElementById("imageContainer");
+			if (currentQuestion.image) {
+				imageContainer.innerHTML = `<img src="${currentQuestion.image}" alt="Изображение к вопросу">`;
+				imageContainer.style.display = "block";
+			} else {
+				imageContainer.innerHTML = "";
+				imageContainer.style.display = "none";
+			}
+
 			const qId = `${currentRound}-${catIndex}-${qIndex}`;
 			renderPlayerControls(qId);
 			saveUsedQuestions();
 		
 			cellElem.classList.add("used");
-
-			// Открываем модальное окно
 			document.getElementById("questionModal").classList.add('open');
 		}
 
-		/* Обновление панели управления в модальном окне */
 		function renderPlayerControls(qId) {
 			let isUsed = false;
 			modalControls.innerHTML = "";
@@ -502,8 +586,7 @@ button:hover {
 				btnCorrect.onclick = function () {
 					if (typeof usedQuestions[qId][player.id] === 'undefined') {
 						updateScore(player.id, currentQuestion.value);
-
-						spanScore.textContent = Number(spanScore.textContent) + Number(currentQuestion.value); //добавление очков визуально
+						spanScore.textContent = Number(spanScore.textContent) + Number(currentQuestion.value);
 						spanScore.style.color = "green";
 						
 						usedQuestions[qId][player.id] = true;
@@ -518,7 +601,6 @@ button:hover {
 							btn.disabled = true;
 							btn.style.opacity = 0.1;
 						});
-						
 					}
 				};
 
@@ -528,8 +610,7 @@ button:hover {
 				btnWrong.onclick = function () {
 					if (typeof usedQuestions[qId][player.id] === 'undefined') {
 						updateScore(player.id, -currentQuestion.value);
-
-						spanScore.textContent = Number(spanScore.textContent) - Number(currentQuestion.value); //отнимает очки визуально
+						spanScore.textContent = Number(spanScore.textContent) - Number(currentQuestion.value);
 						spanScore.style.color = "red";
 
 						usedQuestions[qId][player.id] = false;
@@ -559,12 +640,10 @@ button:hover {
 
 				btnContainer.appendChild(btnCorrect);
 				btnContainer.appendChild(btnWrong);
-
 				container.appendChild(btnContainer);
 				modalControls.appendChild(container);
 			});
 
-			// Кнопка закрытия вопроса
 			const closeBtn = document.createElement("button");
 			closeBtn.textContent = "Закрыть вопрос";
 			closeBtn.style.marginTop = "20px";
@@ -573,7 +652,6 @@ button:hover {
 			modalControls.appendChild(closeBtn);
 		}
 
-		/* Показ правильного ответа */
 		function showAnswer() {
 			const correctAnswerEl = document.querySelector(".correctAnswer");
 			correctAnswerEl.textContent = "Ответ: " + currentQuestion.answer;
@@ -581,12 +659,12 @@ button:hover {
 			document.getElementById("showAnswerBtn").disabled = true;
 		}
 
-		/* Закрытие модального окна */
 		function closeModal() {
+			document.getElementById("videoContainer").innerHTML = "";
+			document.getElementById("imageContainer").innerHTML = ""; // Очищаем картинку при закрытии
 			document.getElementById("questionModal").classList.remove('open');
 		}
 
-		/* Добавление игрока */
 		function addPlayer() {
 			let name = prompt("Введите имя игрока:");
 			if (name) {
@@ -596,7 +674,6 @@ button:hover {
 			}
 		}
 
-		/* Обновление счёта игрока */
 		function updateScore(playerId, points, fullUpdate) {
 			const playerIndex = players.findIndex(item => item.id === playerId);
 			if(fullUpdate) {
@@ -608,9 +685,7 @@ button:hover {
 			renderLeaderboard();
 		}
 
-		/* Сброс очков */
 		function resetGame() {
-
 			let reset = confirm("Сбросить игру?");
 			if (reset) {
 				localStorage.clear();
@@ -618,17 +693,14 @@ button:hover {
 			}
 		}
 
-		/* Следующий раунд */
 		function nextRound() {
 			localStorage.setItem("currentRound", (roundQuestion.length <= currentRound) ? 0 : Number(currentRound) + 1);
 			window.location.reload();
 		}
 
-		/* Отрисовка таблицы лидеров */
 		function renderLeaderboard() {
 			const list = document.getElementById("playersList");
 			list.innerHTML = "";
-			// Сортировка по очкам (по убыванию)
 			let sortPlayers = players.toSorted((a, b) => b.score - a.score);
 			sortPlayers.forEach((player, index) => {
 				const div = document.createElement("div");
@@ -656,17 +728,14 @@ button:hover {
 					updateScore(player.id, input.value, true);
 				}
 			};
-
 			scoreSpan.replaceWith(input);
 			input.focus();
 		}
 
-		// Инициализация при загрузке
 		window.onload = function () {
 			initBoard();
 			renderLeaderboard();
 		}
 	</script>
 </body>
-
 </html>
