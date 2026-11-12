@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Своя Игра - Экран для зрителей</title>
+    <style>
+        :root {
+            --primary: #0b0f1a;
+            --secondary: #1c2233;
+            --accent: #ffcc00;
+            --used: #3a3f55;
+            --text-light: #f8f8f8;
+            --text-dark: #1a1a1a;
+            --border-radius: 10px;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top left, #0b0f1a, #121826);
+            color: var(--text-light);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .main-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+        .sidebar {
+            width: 320px;
+            background: var(--secondary);
+            padding: 24px;
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        .sidebar h2 {
+            margin: 0 0 15px;
+            color: var(--accent);
+            text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+            text-align: center;
+            font-size: 24px;
+        }
+        .player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: #2b324a;
+            border-radius: var(--border-radius);
+            margin-bottom: 12px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .player span:last-child {
+            color: var(--accent);
+        }
+
+        h1.roundTitle {
+            color: var(--accent);
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+            text-align: center;
+        }
+        
+        .board {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .cell {
+            background: var(--accent);
+            color: var(--text-dark);
+            font-weight: bold;
+            font-size: 24px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            width: 75px;
+            height: 75px;
+            border-radius: var(--border-radius);
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        .cell.header {
+            background: white;
+            width: 320px;
+            font-size: 19px;
+            justify-content: flex-start;
+            padding-left: 20px;
+            padding-right: 20px;
+            color: var(--text-dark);
+            height: 75px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cell.used {
+            background: var(--used);
+            color: #555;
+        }
+
+        .question-view {
+            display: none;
+            width: 100%;
+            text-align: center;
+            max-width: 900px;
+        }
+        .q-header {
+            color: var(--accent);
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        .questionText {
+            font-size: 2.4rem;
+            line-height: 1.4;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 40vh;
+            object-fit: contain;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .correctAnswer {
+            color: #00ff99;
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-top: 25px;
+            display: none;
+            text-shadow: 0 0 10px rgba(0,255,153,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <div class="game-area">
+            <h1 class="roundTitle" id="roundTitle">Своя Игра</h1>
+            
+            <div class="board" id="tvBoard">
+                <div style="font-size: 1.8rem; color: #556080; margin-top: 50px;">Ожидание данных от ведущего...</div>
+            </div>
+
+            <div class="question-view" id="questionView">
+                <div class="q-header" id="qTitle"></div>
+                <div class="image-container" id="qImageContainer"></div>
+                <div class="questionText" id="qText"></div>
+                <div class="correctAnswer" id="qAnswer"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h2>Лучшие</h2>
+            <div id="tvPlayersList">
+                <div style="color: #777; text-align: center; margin-top: 20px;">Нет игроков</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const channel = new BroadcastChannel('svoya_igra_channel');
+        const tvBoard = document.getElementById('tvBoard');
+        const questionView = document.getElementById('questionView');
+        const qTitle = document.getElementById('qTitle');
+        const qText = document.getElementById('qText');
+        const qImageContainer = document.getElementById('qImageContainer');
+        const qAnswer = document.getElementById('qAnswer');
+        const roundTitleEl = document.getElementById('roundTitle');
+        const tvPlayersList = document.getElementById('tvPlayersList');
+
+        let currentPackageData = null;
+        let currentRoundIdx = 0;
+        let usedQuestionsState = {};
+
+        // Сообщаем ведущему, что ТВ-экран открыт и готов работать
+        channel.postMessage({ action: 'tvConnected' });
+
+        channel.onmessage = function (event) {
+            const data = event.data;
+
+            if (data.action === 'updatePlayers') {
+                renderTVPlayers(data.players);
+            }
+
+            if (data.action === 'initBoard') {
+                currentPackageData = data.categories;
+                currentRoundIdx = data.round;
+                roundTitleEl.textContent = 'Раунд ' + (currentRoundIdx + 1);
+                usedQuestionsState = data.used || {};
+                renderTVBoard();
+                if (data.players) renderTVPlayers(data.players);
+            }
+            else if (data.action === 'showQuestion') {
+                tvBoard.style.display = 'none';
+                qTitle.textContent = data.title + ' — ' + data.value + ' очков';
+                qText.textContent = data.question;
+                
+                // Прячем ответ при открытии нового вопроса
+                qAnswer.style.display = 'none';
+                qAnswer.textContent = '';
+
+                if (data.image) {
+                    qImageContainer.innerHTML = '<img src="' + data.image + '" alt="Вопрос">';
+                    qImageContainer.style.display = 'block';
+                } else {
+                    qImageContainer.innerHTML = '';
+                    qImageContainer.style.display = 'none';
+                }
+                questionView.style.display = 'block';
+            } 
+            else if (data.action === 'showAnswer') {
+                // ДОБАВЛЕННЫЙ ОБРАБОТЧИК: Показываем ответ на телевизоре по кнопке ведущего
+                qAnswer.innerHTML = "Ответ: " + data.answer;
+                qAnswer.style.display = 'block';
+            }
+            else if (data.action === 'close') {
+                questionView.style.display = 'none';
+                tvBoard.style.display = 'flex';
+                if (data.used) {
+                    usedQuestionsState = data.used;
+                    renderTVBoard();
+                }
+                if (data.players) {
+                    renderTVPlayers(data.players);
+                }
+            }
+        };
+
+        function renderTVBoard() {
+            tvBoard.innerHTML = '';
+            if (!currentPackageData) return;
+
+            currentPackageData.forEach((cat, catIndex) => {
+                const row = document.createElement('div');
+                row.className = 'row';
+
+                const headerCell = document.createElement('div');
+                headerCell.className = 'cell header';
+                headerCell.textContent = cat.title;
+                row.appendChild(headerCell);
+
+                cat.questions.forEach((q, qIndex) => {
+                    const qId = currentRoundIdx + '-' + catIndex + '-' + qIndex;
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.textContent = q.value;
+
+                    if (usedQuestionsState && usedQuestionsState[qId]) {
+                        cell.classList.add('used');
+                    }
+                    row.appendChild(cell);
+                });
+                tvBoard.appendChild(row);
+            });
+        }
+
+        function renderTVPlayers(players) {
+            tvPlayersList.innerHTML = '';
+            if (!players || players.length === 0) {
+                tvPlayersList.innerHTML = '<div style="color: #777; text-align: center; margin-top: 20px;">Нет игроков</div>';
+                return;
+            }
+            let sorted = [...players].sort((a, b) => b.score - a.score);
+            sorted.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'player';
+                div.innerHTML = '<span>' + player.name + '</span><span>' + player.score + '</span>';
+                tvPlayersList.appendChild(div);
+            });
+        }
+
+        channel.postMessage({ action: 'requestSync' });
+    </script>
+</body>
+</html>
