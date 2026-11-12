@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Своя Игра - Многопользовательская с сохранением состояния</title>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
+	<style>
+		:root {
+    --primary: #0b0f1a;
+    --secondary: #1c2233;
+    --accent: #ffcc00;
+    --accent-hover: #ffe066;
+    --used: #3a3f55;
+    --text-light: #f8f8f8;
+    --text-dark: #1a1a1a;
+    --border-radius: 10px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top left, #0b0f1a, #121826);
+    color: var(--text-light);
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.board {
+    display: flex;
+    border-radius: var(--border-radius);
+    flex-direction: column;
+	margin: 10px;
+}
+.row {
+	display: inline-flex;
+}
+.cell {
+    background: var(--accent);
+    color: var(--text-dark);
+    font-weight: bold;
+    font-size: 22px;
+    text-align: center;
+	align-content: center;
+    padding: 15px;
+    margin: 2px;    
+	width: 50px;
+    height: 50px;
+    border-radius: var(--border-radius);
+}
+
+.cell:not(.header) {
+    cursor: pointer;
+}
+
+.cell:hover:not(.header) {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.cell.used {
+    background: var(--used);
+    color: #aaa;
+    cursor: default;
+}
+
+.cell.header {
+    background: white;
+	width: 260px;
+    color: var(--text-dark);
+}
+
+.leaderboard {
+    background: var(--secondary);
+    padding: 24px;
+    border-radius: var(--border-radius);
+    margin: 10px;
+    min-width: 200px;
+	max-width: 300px;
+}
+
+.leaderboard h1,
+.leaderboard h2 {
+    margin: 0 0 12px;
+    color: var(--accent);
+    text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+}
+
+.leaderboard .leaderboard__btn {
+	display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+}
+
+.player {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #2b324a;
+    border-radius: var(--border-radius);
+    margin-bottom: 10px;
+}
+
+button, .file-upload-btn {
+    background: var(--accent);
+    color: var(--text-dark);
+    border: none;
+    padding: 12px 24px;
+	margin: 3px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+}
+
+button:hover, .file-upload-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(10, 10, 20, 0.85);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--secondary);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 70vw;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    height: 0;
+    margin: 15px 0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: none; 
+}
+
+.video-container iframe {
+    position: absolute;
+    top: -60px;
+    left: 0;
+    width: 100%;
+    height: calc(100% + 120px);
+    border: 0;
+}
+
+.image-container {
+    width: 100%;
+    text-align: center;
+    margin: 15px 0;
+    display: none;
+}
+
+.image-container img {
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+}
+
+@media (max-width: 768px) {
+	.board {
+		display: block;
+		overflow-x: auto;
+	}
+	.leaderboard {
+		max-width: none;
+		width: 100%;
+	}
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        padding: 20px;
+    }
+}
+
+.close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    font-size: 48px; 
+    cursor: pointer;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.close:hover {
+    transform: scale(1.2);
+}
+
+.questionText {
+    font-size: 20px;
+    margin: 20px 0;
+}
+
+.correctAnswer {
+    color: #00ff99;
+    font-size: 22px;
+    font-weight: bold;
+	display:none; 
+	margin:10px 0;
+}
+
+#modalControls {
+    margin-top: 20px;
+}
+
+#modalControls button {
+    margin-top: 10px;
+}
+
+.player-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+.player-controls span {
+    font-size: 26px;
+}
+.player-controls div button {
+    margin-left: 10px;
+}
+	</style>
+	<script src="https://www.youtube.com/iframe_api"></script>
+</head>
+
+<body>
+	<div class="container">
+		<div class="board" id="gameBoard"></div>
+		<div class="leaderboard" id="leaderboard">
+			<h1 class="roundText"></h1>
+			<h2>Таблица лидеров</h2>
+			<div id="playersList"></div>
+			<div class="leaderboard__btn">
+				<button onclick="addPlayer()">Добавить игрока</button>
+				<button onclick="nextRound()">Следующий раунд</button>
+				<label class="file-upload-btn">
+					Загрузить XML и медиа
+					<input type="file" id="xmlFileInput" accept=".xml,image/*" multiple style="display: none;" onchange="loadXmlPackage(event)">
+				</label>
+				<button class="btn-reset" onclick="resetGame()">Сбросить игру</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="questionModal" class="modal">
+		<div class="modal-content">
+			<span class="close" onclick="closeModal()">&times;</span>
+			<h2 id="questionTitle">Вопрос</h2>
+			
+			<div class="video-container" id="videoContainer"></div>
+			<div class="image-container" id="imageContainer"></div>
+
+			<p class="questionText">Текст вопроса</p>
+			<button id="showAnswerBtn" onclick="showAnswer()">Показать ответ</button>
+			<p class="correctAnswer"></p>
+			<div id="modalControls"></div>
+		</div>
+	</div>
+
+	<script>
+		let defaultQuestions = [
+			[
+				{
+					title: "История",
+					questions: [
+						{ value: 100, question: "Кто был первым князем Древней Руси?", answer: "Рюрик" },
+						{ value: 200, question: "В каком году произошла Октябрьская революция?", answer: "1917" }
+					]
+				}
+			]
+		];
+
+		let roundQuestion = defaultQuestions;
+		let localImageFiles = {};
+
+		let currentRound = Number(localStorage.getItem("currentRound")) || 0;
+		let players = JSON.parse(localStorage.getItem("players")) || [];
+		let usedQuestions = JSON.parse(localStorage.getItem("usedQuestions")) || {};
+
+		const savedSessionPackage = sessionStorage.getItem("roundQuestion");
+		if (savedSessionPackage) {
+			try {
+				roundQuestion = JSON.parse(savedSessionPackage);
+			} catch (e) {
+				console.error("Ошибка чтения сессии пакета");
+			}
+		}
+
+		if (!roundQuestion[currentRound]) {
+			currentRound = 0;
+		}
+
+		document.querySelector('.roundText').innerHTML = 'Round ' + (currentRound + 1);
+
+		let categories = roundQuestion[currentRound];
+		const modalControls = document.getElementById("modalControls");
+
+		let currentQuestion = null;
+		let currentCategoryIndex = null;
+		let currentQuestionIndex = null;
+
+		function getYouTubeId(url) {
+			if (!url) return null;
+			if (url.length === 11 && !url.includes('/') && !url.includes('?')) return url;
+			const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+			const match = url.match(regExp);
+			return (match && match[2].length === 11) ? match[2] : null;
+		}
+
+		function savePlayers() {
+			localStorage.setItem("players", JSON.stringify(players));
+		}
+
+		function saveUsedQuestions() {
+			localStorage.setItem("usedQuestions", JSON.stringify(usedQuestions));
+		}
+
+		function loadXmlPackage(event) {
+			const files = event.target.files;
+			if (!files.length) return;
+
+			let xmlFile = null;
+			localImageFiles = {};
+
+			for (let file of files) {
+				if (file.name.endsWith('.xml')) {
+					xmlFile = file;
+				} else if (file.type.startsWith('image/')) {
+					const fileUrl = URL.createObjectURL(file);
+					localImageFiles[file.name.toLowerCase()] = fileUrl;
+					localImageFiles[file.name] = fileUrl;
+				}
+			}
+
+			if (!xmlFile) {
+				alert("Пожалуйста, выберите файл content.xml!");
+				return;
+			}
+
+			const reader = new FileReader();
+			reader.onload = function(e) {
+				try {
+					const parser = new DOMParser();
+					const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+
+					const parseError = xmlDoc.querySelector("parsererror");
+					if (parseError) {
+						alert("Ошибка при разборе XML файла!");
+						return;
+					}
+
+					const parsedRounds = [];
+					const rounds = xmlDoc.querySelectorAll("rounds > round");
+
+					rounds.forEach((roundNode) => {
+						const roundCategories = [];
+						const themes = roundNode.querySelectorAll("themes > theme");
+
+						themes.forEach((themeNode) => {
+							const themeName = themeNode.getAttribute("name") || "Без названия";
+							const questionsList = [];
+							const xmlQuestions = themeNode.querySelectorAll("questions > question");
+
+							xmlQuestions.forEach((qNode, qIdx) => {
+								const priceAttr = qNode.getAttribute("price");
+								let value = priceAttr ? parseInt(priceAttr, 10) : (qIdx + 1) * 100;
+
+								let qText = "";
+								let aText = "";
+								let imgLink = "";
+								let ansImgLink = "";
+								let ytLink = "";
+
+								const atoms = qNode.querySelectorAll("scenario > atom");
+								atoms.forEach(atom => {
+									let text = atom.textContent.trim();
+									const type = atom.getAttribute("type");
+									let fileNameOnly = text.split('/').pop().split('\\').pop().replace(/^#|#$/g, '').toLowerCase();
+
+									if (!type || type === "text") {
+										if (text.startsWith("http://") || text.startsWith("https://")) {
+											if (text.match(/\.(jpeg|jpg|gif|png)$/i)) imgLink = text;
+										} else if (localImageFiles[fileNameOnly]) {
+											imgLink = localImageFiles[fileNameOnly];
+										} else {
+											qText += (qText ? " " : "") + text;
+										}
+									} else if (type === "image") {
+										imgLink = localImageFiles[fileNameOnly] || text;
+									} else if (type === "video" && !ytLink) {
+										ytLink = text;
+									}
+								});
+
+								const params = qNode.querySelectorAll("params > param");
+								params.forEach(param => {
+									const paramName = param.getAttribute("name");
+									const items = param.querySelectorAll("item");
+
+									items.forEach(item => {
+										let text = item.textContent.trim();
+										let isRef = item.getAttribute("isRef") === "True";
+										let itemType = item.getAttribute("type");
+										let fileNameOnly = text.split('/').pop().split('\\').pop().toLowerCase();
+
+										if (paramName === "question") {
+											if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
+												imgLink = localImageFiles[fileNameOnly] || text;
+											} else if (itemType === "text" || !itemType) {
+												qText += (qText ? " " : "") + text;
+											}
+										} else if (paramName === "answer") {
+											if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
+												ansImgLink = localImageFiles[fileNameOnly] || text;
+											}
+										}
+									});
+								});
+
+								if (!qText) qText = "Вопрос на картинке";
+
+								const rights = qNode.querySelectorAll("right > answer");
+								let answersArr = [];
+								rights.forEach(ans => {
+									let ansText = ans.textContent.trim();
+									if (ansText) answersArr.push(ansText);
+								});
+								
+								aText = answersArr.length > 0 ? answersArr.join(", ") : "";
+								if (ansImgLink) {
+									aText += (aText ? "<br>" : "") + '<img src="' + ansImgLink + '" style="max-width:100%; max-height:300px; border-radius:8px; margin-top:10px;" alt="Картинка к ответу">';
+								}
+								if (!aText) aText = "Ответ не указан";
+
+								questionsList.push({
+									value: value,
+									question: qText,
+									answer: aText,
+									image: imgLink || undefined,
+									youtube: ytLink || undefined
+								});
+							});
+
+							if (questionsList.length > 0) {
+								roundCategories.push({
+									title: themeName,
+									questions: questionsList
+								});
+							}
+						});
+
+						if (roundCategories.length > 0) {
+							parsedRounds.push(roundCategories);
+						}
+					});
+
+					if (parsedRounds.length > 0) {
+						roundQuestion = parsedRounds;
+						currentRound = 0;
+						
+						try {
+							sessionStorage.setItem("roundQuestion", JSON.stringify(roundQuestion));
+						} catch (e) {
+							console.log("Пакет держится в оперативной памяти JS.");
+						}
+
+						localStorage.setItem("currentRound", 0);
+						localStorage.removeItem("usedQuestions");
+						alert("Пакет успешно загружен!");
+						window.location.reload();
+					} else {
+						alert("Не удалось извлечь вопросы из структуры XML.");
+					}
+
+				} catch (err) {
+					console.error(err);
+					alert("Ошибка при чтении XML файла.");
+				}
+			};
+			reader.readAsText(xmlFile);
+		}
+
+		function initBoard() {
+			const board = document.getElementById("gameBoard");
+			board.innerHTML = "";
+			categories.forEach((cat, catIndex) => {
+				const row = document.createElement('div');
+				row.className = 'row';
+
+				const headerCell = document.createElement('div');
+				headerCell.className = 'cell header';
+				headerCell.textContent = cat.title;
+				row.appendChild(headerCell);
+
+				cat.questions.forEach((q, qIndex) => {
+					const qId = currentRound + "-" + catIndex + "-" + qIndex;
+					const cell = document.createElement('div');
+					cell.className = 'cell';
+					cell.textContent = q.value;
+
+					if (usedQuestions[qId]) {
+						cell.classList.add("used");
+					}
+					cell.onclick = function () { openQuestion(catIndex, qIndex, cell); };
+					row.appendChild(cell);
+				});
+				board.appendChild(row);
+			});
+		}
+
+		function openQuestion(catIndex, qIndex, cellElem) {
+			currentCategoryIndex = catIndex;
+			currentQuestionIndex = qIndex;
+			currentQuestion = categories[catIndex].questions[qIndex];
+
+			const correctAnswerEl = document.querySelector(".correctAnswer");
+			correctAnswerEl.style.display = "none";
+			correctAnswerEl.textContent = "";
+			document.getElementById("showAnswerBtn").disabled = false;
+
+			document.getElementById("questionTitle").textContent = categories[catIndex].title + " " + currentQuestion.value + " очков";
+			document.querySelector(".questionText").textContent = currentQuestion.question;
+
+			const videoContainer = document.getElementById("videoContainer");
+			const videoId = getYouTubeId(currentQuestion.youtube);
+
+			if (videoId) {
+				videoContainer.innerHTML = '<div id="yt-player"></div>';
+				videoContainer.style.display = "block";
+				new YT.Player('yt-player', {
+					height: '100%',
+					width: '100%',
+					videoId: videoId,
+					playerVars: {
+						'autoplay': 1,
+						'controls': 0,
+						'rel': 0,
+						'fs': 0,
+						'start': currentQuestion.start || 0,
+						'end': currentQuestion.end || undefined
+					},
+					events: {
+						'onStateChange': function(event) {
+							if (event.data === YT.PlayerState.ENDED) {
+								event.target.seekTo(currentQuestion.start || 0);
+								event.target.playVideo();
+							}
+						}
+					}
+				});
+			} else {
+				videoContainer.innerHTML = "";
+				videoContainer.style.display = "none";
+			}
+
+			const imageContainer = document.getElementById("imageContainer");
+			if (currentQuestion.image) {
+				imageContainer.innerHTML = '<img src="' + currentQuestion.image + '" alt="Изображение к вопросу">';
+				imageContainer.style.display = "block";
+			} else {
+				imageContainer.innerHTML = "";
+				imageContainer.style.display = "none";
+			}
+
+			const qId = currentRound + "-" + catIndex + "-" + qIndex;
+			renderPlayerControls(qId);
+			saveUsedQuestions();
+		
+			cellElem.classList.add("used");
+			document.getElementById("questionModal").classList.add('open');
+		}
+
+		function renderPlayerControls(qId) {
+			let isUsed = false;
+			modalControls.innerHTML = "";
+
+			if(typeof usedQuestions[qId] === 'undefined') {
+				usedQuestions[qId] = {};
+			} else {
+				isUsed = true;
+			}
+
+			players.forEach((player) => {
+				const container = document.createElement("div");
+				container.classList.add('player-controls');
+
+				const spanName = document.createElement("span");
+				spanName.textContent = player.name;
+				container.appendChild(spanName);
+
+				const spanScore = document.createElement("span");
+				spanScore.style.margin = "0 10px";
+				spanScore.textContent = player.score;
+				container.appendChild(spanScore);
+
+				const btnContainer = document.createElement("div");
+				const btnCorrect = document.createElement("button");
+				btnCorrect.textContent = "Правильно";
+				btnCorrect.style.marginLeft = "10px";
+				btnCorrect.onclick = function () {
+					if (typeof usedQuestions[qId][player.id] === 'undefined') {
+						updateScore(player.id, currentQuestion.value);
+						spanScore.textContent = Number(spanScore.textContent) + Number(currentQuestion.value);
+						spanScore.style.color = "green";
+						
+						usedQuestions[qId][player.id] = true;
+						saveUsedQuestions();
+						btnCorrect.disabled = true;
+						btnWrong.disabled = true;
+						btnCorrect.style.opacity = 0.5;
+						btnWrong.style.opacity = 0.1;
+
+						let unUsedBtnList = document.querySelectorAll('.player-controls button:not([disabled])');
+						unUsedBtnList.forEach(btn => {
+							btn.disabled = true;
+							btn.style.opacity = 0.1;
+						});
+					}
+				};
+
+				const btnWrong = document.createElement("button");
+				btnWrong.textContent = "Неправильно";
+				btnWrong.style.marginLeft = "10px";
+				btnWrong.onclick = function () {
+					if (typeof usedQuestions[qId][player.id] === 'undefined') {
+						updateScore(player.id, -currentQuestion.value);
+						spanScore.textContent = Number(spanScore.textContent) - Number(currentQuestion.value);
+						spanScore.style.color = "red";
+
+						usedQuestions[qId][player.id] = false;
+						saveUsedQuestions();
+						btnCorrect.disabled = true;
+						btnWrong.disabled = true;
+						btnCorrect.style.opacity = 0.1;
+						btnWrong.style.opacity = 0.5;
+					}
+				};
+
+				if (isUsed) {
+					spanScore.remove();
+					btnCorrect.disabled = true;
+					btnWrong.disabled = true;
+					if(typeof usedQuestions[qId][player.id] === 'undefined') {
+						btnCorrect.style.opacity = 0.1;
+						btnWrong.style.opacity = 0.1;
+					} else if(usedQuestions[qId][player.id]) {
+						btnCorrect.style.opacity = 0.5;
+						btnWrong.style.opacity = 0.1;
+					} else {
+						btnCorrect.style.opacity = 0.1;
+						btnWrong.style.opacity = 0.5;
+					}
+				}
+
+				btnContainer.appendChild(btnCorrect);
+				btnContainer.appendChild(btnWrong);
+				container.appendChild(btnContainer);
+				modalControls.appendChild(container);
+			});
+
+			const closeBtn = document.createElement("button");
+			closeBtn.textContent = "Закрыть вопрос";
+			closeBtn.style.marginTop = "20px";
+			closeBtn.style.padding = "10px 20px";
+			closeBtn.onclick = function () { closeModal(); };
+			modalControls.appendChild(closeBtn);
+		}
+
+		function showAnswer() {
+			const correctAnswerEl = document.querySelector(".correctAnswer");
+			correctAnswerEl.innerHTML = "Ответ: " + currentQuestion.answer;
+			correctAnswerEl.style.display = "block";
+			document.getElementById("showAnswerBtn").disabled = true;
+		}
+
+		function closeModal() {
+			document.getElementById("videoContainer").innerHTML = "";
+			const imgCont = document.getElementById("imageContainer");
+			imgCont.innerHTML = "";
+			imgCont.style.display = "none";
+			document.getElementById("questionModal").classList.remove('open');
+		}
+
+		function addPlayer() {
+			let name = prompt("Введите имя игрока:");
+			if (name) {
+				players.push({id: players.length+1, name: name, score: 0 });
+				savePlayers();
+				renderLeaderboard();
+			}
+		}
+
+		function updateScore(playerId, points, fullUpdate) {
+			const playerIndex = players.findIndex(item => item.id === playerId);
+			if(fullUpdate) {
+				players[playerIndex].score = Number(points);
+			} else {
+				players[playerIndex].score += Number(points);
+			}
+			savePlayers();
+			renderLeaderboard();
+		}
+
+		function resetGame() {
+			let reset = confirm("Сбросить игру?");
+			if (reset) {
+				localStorage.clear();
+				sessionStorage.clear();
+				window.location.reload();
+			}
+		}
+
+		function nextRound() {
+			let nextR = currentRound + 1;
+			if (nextR >= roundQuestion.length) nextR = 0;
+			localStorage.setItem("currentRound", nextR);
+			window.location.reload();
+		}
+
+		function renderLeaderboard() {
+			const list = document.getElementById("playersList");
+			list.innerHTML = "";
+			let sortPlayers = [...players].sort((a, b) => b.score - a.score);
+			sortPlayers.forEach((player) => {
+				const div = document.createElement("div");
+				div.className = "player";
+				
+				const scoreSpan = document.createElement("span");
+				scoreSpan.textContent = player.score;
+				scoreSpan.style.cursor = "pointer";
+				scoreSpan.onclick = function() { showEditField(player, scoreSpan); };
+
+				div.innerHTML = `<span>${player.name}</span>`;
+				div.appendChild(scoreSpan);
+				list.appendChild(div);
+			});
+		}
+
+		function showEditField(player, scoreSpan) {
+			const input = document.createElement("input");
+			input.type = "number";
+			input.value = player.score;
+			input.style.width = "90px";
+			input.onblur = function() { updateScore(player.id, input.value, true); };
+			input.onkeydown = function(event) {
+				if (event.key === "Enter") {
+					updateScore(player.id, input.value, true);
+				}
+			};
+			scoreSpan.replaceWith(input);
+			input.focus();
+		}
+
+		window.onload = function () {
+			initBoard();
+			renderLeaderboard();
+		}
+	</script>
+</body>
+</html>
