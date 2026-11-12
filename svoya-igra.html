@@ -263,7 +263,7 @@ button:hover, .file-upload-btn:hover {
 		<div class="board" id="gameBoard"></div>
 		<div class="leaderboard" id="leaderboard">
 			<h1 class="roundText"></h1>
-			<h2>Таблица лидеров</h2>
+			<h2>Лучшие</h2>
 			<div id="playersList"></div>
 			<div class="leaderboard__btn">
 				<button onclick="addPlayer()">Добавить игрока</button>
@@ -272,6 +272,7 @@ button:hover, .file-upload-btn:hover {
 					Загрузить XML и медиа
 					<input type="file" id="xmlFileInput" accept=".xml,image/*" multiple style="display: none;" onchange="loadXmlPackage(event)">
 				</label>
+				<button onclick="openDisplayWindow()" style="background: #00ff99; color: #0b0f1a;">Открыть экран для ТВ</button>
 				<button class="btn-reset" onclick="resetGame()">Сбросить игру</button>
 			</div>
 		</div>
@@ -318,13 +319,45 @@ button:hover, .file-upload-btn:hover {
 		let currentCategoryIndex = null;
 		let currentQuestionIndex = null;
 
-		// Инициализация IndexedDB для хранения больших пакетов вопросов и картинок
+		// Канал связи для второго экрана (телевизора)
+		const gameChannel = new BroadcastChannel('svoya_igra_channel');
+		let isTvConnected = false;
+
+		function openDisplayWindow() {
+			window.open('display.html', '_blank', 'width=1280,height=720');
+		}
+
+		// Слушаем сообщения от ТВ-экрана
+		gameChannel.onmessage = function(event) {
+			const data = event.data;
+			console.log(data);
+			if (data.action === 'tvConnected') {
+				isTvConnected = true;
+				syncTVBoard();
+			} else if (data.action === 'requestSync') {
+				isTvConnected = true;
+				syncTVBoard();
+			}
+		};
+
+		function syncTVBoard() {
+			if(isTvConnected) {
+				gameChannel.postMessage({
+					action: 'initBoard',
+					round: currentRound,
+					categories: categories,
+					used: usedQuestions,
+					players: players
+				});
+			}
+		}
+
+		// Инициализация IndexedDB для хранения пакетов
 		let db;
 		const dbRequest = indexedDB.open("SvoyaIgraDB", 1);
 
 		dbRequest.onerror = function(event) {
 			console.error("Ошибка открытия IndexedDB", event);
-			// Если база недоступна, запускаем дефолт
 			initDefaultGame();
 		};
 
@@ -366,17 +399,14 @@ button:hover, .file-upload-btn:hover {
 					roundQuestion = defaultQuestions;
 				}
 				
-				// Проверяем актуальный раунд после загрузки пакета из базы
 				if (!roundQuestion[currentRound]) {
 					currentRound = 0;
 					localStorage.setItem("currentRound", 0);
 				}
 
 				categories = roundQuestion[currentRound];
-				
-				// Строим доску и обновляем текст ТОЛЬКО ПОСЛЕ загрузки из БД
 				initBoard();
-				document.querySelector('.roundText').innerHTML = 'Round ' + (currentRound + 1);
+				document.querySelector('.roundText').innerHTML = 'Раунд ' + (currentRound + 1);
 			};
 
 			reqQuestions.onerror = function() {
@@ -639,6 +669,8 @@ button:hover, .file-upload-btn:hover {
 				});
 				board.appendChild(row);
 			});
+
+			syncTVBoard();
 		}
 
 		function openQuestion(catIndex, qIndex, cellElem) {
@@ -647,9 +679,18 @@ button:hover, .file-upload-btn:hover {
 			currentQuestion = categories[catIndex].questions[qIndex];
 
 			const correctAnswerEl = document.querySelector(".correctAnswer");
-			correctAnswerEl.style.display = "none";
-			correctAnswerEl.textContent = "";
-			document.getElementById("showAnswerBtn").disabled = false;
+			
+			// ЕСЛИ ТРАНСЛЯЦИЯ ИДЕТ: показываем ответ у ведущего сразу в вопросе
+			if (isTvConnected) {
+				correctAnswerEl.innerHTML = "Ответ: " + currentQuestion.answer;
+				correctAnswerEl.style.display = "block";
+				// document.getElementById("showAnswerBtn").disabled = true; // Кнопка уже не нужна, ответ виден
+			} else {
+				// ЕСЛИ ТРАНСЛЯЦИИ НЕТ: скрываем ответ, ждем нажатия кнопки
+				correctAnswerEl.style.display = "none";
+				correctAnswerEl.textContent = "";
+				// document.getElementById("showAnswerBtn").disabled = false;
+			}
 
 			document.getElementById("questionTitle").textContent = categories[catIndex].title + " " + currentQuestion.value + " очков";
 			document.querySelector(".questionText").textContent = currentQuestion.question;
@@ -701,6 +742,15 @@ button:hover, .file-upload-btn:hover {
 		
 			cellElem.classList.add("used");
 			document.getElementById("questionModal").classList.add('open');
+
+			// Отправляем вопрос на ТВ (на телевизор ответ НЕ улетает)
+			gameChannel.postMessage({
+				action: 'showQuestion',
+				title: categories[catIndex].title,
+				value: currentQuestion.value,
+				question: currentQuestion.question,
+				image: currentQuestion.image || null
+			});
 		}
 
 		function renderPlayerControls(qId) {
@@ -803,7 +853,13 @@ button:hover, .file-upload-btn:hover {
 			const correctAnswerEl = document.querySelector(".correctAnswer");
 			correctAnswerEl.innerHTML = "Ответ: " + currentQuestion.answer;
 			correctAnswerEl.style.display = "block";
-			document.getElementById("showAnswerBtn").disabled = true;
+			// document.getElementById("showAnswerBtn").disabled = true;
+
+			// Эта кнопка теперь служит сигналом «показать ответ на телевизоре» во время трансляции
+			gameChannel.postMessage({
+				action: 'showAnswer',
+				answer: currentQuestion.answer
+			});
 		}
 
 		function closeModal() {
@@ -812,6 +868,12 @@ button:hover, .file-upload-btn:hover {
 			imgCont.innerHTML = "";
 			imgCont.style.display = "none";
 			document.getElementById("questionModal").classList.remove('open');
+
+			gameChannel.postMessage({ 
+				action: 'close',
+				used: usedQuestions,
+				players: players
+			});
 		}
 
 		function addPlayer() {
@@ -853,7 +915,7 @@ button:hover, .file-upload-btn:hover {
 			localStorage.setItem("currentRound", currentRound);
 			categories = roundQuestion[currentRound] || roundQuestion[0];
 			initBoard();
-			document.querySelector('.roundText').innerHTML = 'Round ' + (currentRound + 1);
+			document.querySelector('.roundText').innerHTML = 'Раунд ' + (currentRound + 1);
 		}
 
 		function renderLeaderboard() {
@@ -872,6 +934,11 @@ button:hover, .file-upload-btn:hover {
 				div.innerHTML = '<span>' + player.name + '</span>';
 				div.appendChild(scoreSpan);
 				list.appendChild(div);
+			});
+
+			gameChannel.postMessage({
+				action: 'updatePlayers',
+				players: players
 			});
 		}
 
@@ -892,7 +959,6 @@ button:hover, .file-upload-btn:hover {
 
 		window.onload = function () {
 			renderLeaderboard();
-			// Отрисовка доски и раунда теперь корректно происходит асинхронно из IndexedDB в loadDataFromDB
 		}
 	</script>
 </body>
