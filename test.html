@@ -92,12 +92,15 @@
   const resultEl = document.getElementById('result');
 
   // 1. Создаем Peer (получаем случайный ID от публичного сервера PeerJS)
-  peer = new Peer();
+  // СТАЛО (генерируем уникальный ID на клиенте и передаем его)
+	const myCustomId = 'player_' + Math.random().toString(36).substring(2, 9);
 
-  peer.on('open', (id) => {
-    myIdEl.innerText = id;
-    statusEl.innerText = "Готов к подключению!";
-  });
+	peer = new Peer(myCustomId);
+
+	peer.on('open', (id) => {
+		myIdEl.innerText = id; // Пользователь увидит свой сгенерированный ID
+		statusEl.innerText = "Готов к подключению!";
+	});
 
   peer.on('error', (err) => {
     statusEl.innerText = "Ошибка: " + err.type;
