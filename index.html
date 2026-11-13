@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Своя Игра - Многопользовательская с сохранением состояния</title>
 	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
+	<script src="jszip.min.js"></script>
 	<style>
 		:root {
     --primary: #0b0f1a;
@@ -270,7 +271,7 @@ button:hover, .file-upload-btn:hover {
 				<button onclick="nextRound()">Следующий раунд</button>
 				<label class="file-upload-btn">
 					Загрузить XML и медиа
-					<input type="file" id="xmlFileInput" accept=".xml,image/*" multiple style="display: none;" onchange="loadXmlPackage(event)">
+					<input type="file" id="xmlFileInput" accept=".siq" multiple style="display: none;" onchange="loadXmlPackage(event)">
 				</label>
 				<button onclick="openDisplayWindow()" style="background: #00ff99; color: #0b0f1a;">Открыть экран для ТВ</button>
 				<button class="btn-reset" onclick="resetGame()">Сбросить игру</button>
@@ -449,196 +450,207 @@ button:hover, .file-upload-btn:hover {
 		}
 
 		function loadXmlPackage(event) {
-			const files = event.target.files;
-			if (!files.length) return;
+			const file = event.target.files[0];
+			if (!file) return;
 
-			let xmlFile = null;
-			let imageFilesToProcess = [];
-
-			for (let file of files) {
-				if (file.name.endsWith('.xml')) {
-					xmlFile = file;
-				} else if (file.type.startsWith('image/')) {
-					imageFilesToProcess.push(file);
-				}
-			}
-
-			if (!xmlFile) {
-				alert("Пожалуйста, выберите файл content.xml!");
-				return;
-			}
-
-			let loadedImagesCount = 0;
-			let tempImages = {};
-
-			function processImageFile(imgFile, callback) {
+			// Проверяем, если это .siq или .zip архив
+			if (file.name.endsWith('.siq') || file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
 				const reader = new FileReader();
 				reader.onload = function(e) {
-					const base64Data = e.target.result;
-					tempImages[imgFile.name.toLowerCase()] = base64Data;
-					tempImages[imgFile.name] = base64Data;
-					callback();
-				};
-				reader.readAsDataURL(imgFile);
-			}
+					JSZip.loadAsync(e.target.result).then(async function(zip) {
+						let xmlFile = null;
+						let tempImages = {};
 
-			function onAllImagesLoaded() {
-				localImageFiles = tempImages;
-				saveDataToDB("localImages", localImageFiles);
+						// Ищем content.xml внутри архива (может лежать в корне или во вложенной папке)
+						let xmlEntry = null;
+						let imageEntries = [];
 
-				const reader = new FileReader();
-				reader.onload = function(e) {
-					try {
-						const parser = new DOMParser();
-						const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
-
-						const parseError = xmlDoc.querySelector("parsererror");
-						if (parseError) {
-							alert("Ошибка при разборе XML файла!");
-							return;
-						}
-
-						const parsedRounds = [];
-						const rounds = xmlDoc.querySelectorAll("rounds > round");
-
-						rounds.forEach((roundNode) => {
-							const roundCategories = [];
-							const themes = roundNode.querySelectorAll("themes > theme");
-
-							themes.forEach((themeNode) => {
-								const themeName = themeNode.getAttribute("name") || "Без названия";
-								const questionsList = [];
-								const xmlQuestions = themeNode.querySelectorAll("questions > question");
-
-								xmlQuestions.forEach((qNode, qIdx) => {
-									const priceAttr = qNode.getAttribute("price");
-									let value = priceAttr ? parseInt(priceAttr, 10) : (qIdx + 1) * 100;
-
-									let qText = "";
-									let aText = "";
-									let imgLink = "";
-									let ansImgLink = "";
-									let ytLink = "";
-
-									const atoms = qNode.querySelectorAll("scenario > atom");
-									atoms.forEach(atom => {
-										let text = atom.textContent.trim();
-										const type = atom.getAttribute("type");
-										let fileNameOnly = text.split('/').pop().split('\\').pop().replace(/^#|#$/g, '').toLowerCase();
-
-										if (!type || type === "text") {
-											if (text.startsWith("http://") || text.startsWith("https://")) {
-												if (text.match(/\.(jpeg|jpg|gif|png)$/i)) imgLink = text;
-											} else if (localImageFiles[fileNameOnly]) {
-												imgLink = localImageFiles[fileNameOnly];
-											} else {
-												qText += (qText ? " " : "") + text;
-											}
-										} else if (type === "image") {
-											imgLink = localImageFiles[fileNameOnly] || text;
-										} else if (type === "video" && !ytLink) {
-											ytLink = text;
-										}
-									});
-
-									const params = qNode.querySelectorAll("params > param");
-									params.forEach(param => {
-										const paramName = param.getAttribute("name");
-										const items = param.querySelectorAll("item");
-
-										items.forEach(item => {
-											let text = item.textContent.trim();
-											let isRef = item.getAttribute("isRef") === "True";
-											let itemType = item.getAttribute("type");
-											let fileNameOnly = text.split('/').pop().split('\\').pop().toLowerCase();
-
-											if (paramName === "question") {
-												if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
-													imgLink = localImageFiles[fileNameOnly] || text;
-												} else if (itemType === "text" || !itemType) {
-													qText += (qText ? " " : "") + text;
-												}
-											} else if (paramName === "answer") {
-												if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
-													ansImgLink = localImageFiles[fileNameOnly] || text;
-												}
-											}
-										});
-									});
-
-									if (!qText) qText = "Вопрос на картинке";
-
-									const rights = qNode.querySelectorAll("right > answer");
-									let answersArr = [];
-									rights.forEach(ans => {
-										let ansText = ans.textContent.trim();
-										if (ansText) answersArr.push(ansText);
-									});
-									
-									aText = answersArr.length > 0 ? answersArr.join(", ") : "";
-									if (ansImgLink) {
-										aText += (aText ? "<br>" : "") + '<img src="' + ansImgLink + '" style="max-width:100%; max-height:300px; border-radius:8px; margin-top:10px;" alt="Картинка к ответу">';
-									}
-									if (!aText) aText = "Ответ не указан";
-
-									questionsList.push({
-										value: value,
-										question: qText,
-										answer: aText,
-										image: imgLink || undefined,
-										youtube: ytLink || undefined
-									});
-								});
-
-								if (questionsList.length > 0) {
-									roundCategories.push({
-										title: themeName,
-										questions: questionsList
-									});
-								}
-							});
-
-							if (roundCategories.length > 0) {
-								parsedRounds.push(roundCategories);
+						zip.forEach(function (relativePath, zipEntry) {
+							const lowerPath = relativePath.toLowerCase();
+							if (lowerPath.endsWith('content.xml')) {
+								xmlEntry = zipEntry;
+							} else if (lowerPath.includes('images/') && !zipEntry.dir) {
+								imageEntries.push({ path: relativePath, entry: zipEntry });
 							}
 						});
 
-						if (parsedRounds.length > 0) {
-							roundQuestion = parsedRounds;
-							currentRound = 0;
-							localStorage.setItem("currentRound", 0);
-							localStorage.removeItem("usedQuestions");
-							usedQuestions = {};
-							categories = roundQuestion[currentRound];
-							
-							saveDataToDB("roundQuestion", roundQuestion, function() {
-								initBoard();
-								document.querySelector('.roundText').innerHTML = 'Round ' + (currentRound + 1);
-								alert("Пакет успешно загружен и сохранен в памяти!");
-							});
-						} else {
-							alert("Не удалось извлечь вопросы из структуры XML.");
+						if (!xmlEntry) {
+							alert("В архиве .siq не найден файл content.xml!");
+							return;
 						}
 
-					} catch (err) {
-						console.error(err);
-						alert("Ошибка при чтении XML файла.");
-					}
-				};
-				reader.readAsText(xmlFile);
-			}
+						// Сначала асинхронно читаем все картинки из папки Images внутри архива
+						for (let imgObj of imageEntries) {
+							try {
+								const contentBlob = await imgObj.entry.async("blob");
+								const base64Data = await new Promise((resolve) => {
+									const r = new FileReader();
+									r.onload = function(ev) { resolve(ev.target.result); };
+									r.readAsDataURL(contentBlob);
+								});
 
-			if (imageFilesToProcess.length === 0) {
-				onAllImagesLoaded();
-			} else {
-				imageFilesToProcess.forEach(imgFile => {
-					processImageFile(imgFile, () => {
-						loadedImagesCount++;
-						if (loadedImagesCount === imageFilesToProcess.length) {
-							onAllImagesLoaded();
+								// Сохраняем имя файла (и полный путь на всякий случай)
+								let fileNameOnly = imgObj.path.split('/').pop().toLowerCase();
+								tempImages[fileNameOnly] = base64Data;
+								tempImages[imgObj.path.toLowerCase()] = base64Data;
+							} catch (err) {
+								console.error("Ошибка чтения картинки из архива:", imgObj.path);
+							}
+						}
+
+						localImageFiles = tempImages;
+						saveDataToDB("localImages", localImageFiles);
+
+						// Теперь читаем сам content.xml
+						const xmlText = await xmlEntry.async("text");
+						parseAndSaveXmlContent(xmlText);
+
+					}).catch(function(err) {
+						console.error(err);
+						alert("Ошибка при распаковке .siq архива. Убедитесь, что это корректный файл.");
+					});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		}
+
+		// Вынесем парсинг XML в отдельную вспомогательную функцию для чистоты кода
+		function parseAndSaveXmlContent(xmlText) {
+			try {
+				const parser = new DOMParser();
+				const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+				const parseError = xmlDoc.querySelector("parsererror");
+				if (parseError) {
+					alert("Ошибка при разборе XML файла!");
+					return;
+				}
+
+				const parsedRounds = [];
+				const rounds = xmlDoc.querySelectorAll("rounds > round");
+
+				rounds.forEach((roundNode) => {
+					const roundCategories = [];
+					const themes = roundNode.querySelectorAll("themes > theme");
+
+					themes.forEach((themeNode) => {
+						const themeName = themeNode.getAttribute("name") || "Без названия";
+						const questionsList = [];
+						const xmlQuestions = themeNode.querySelectorAll("questions > question");
+
+						xmlQuestions.forEach((qNode, qIdx) => {
+							const priceAttr = qNode.getAttribute("price");
+							let value = priceAttr ? parseInt(priceAttr, 10) : (qIdx + 1) * 100;
+
+							let qText = "";
+							let aText = "";
+							let imgLink = "";
+							let ansImgLink = "";
+							let ytLink = "";
+
+							const atoms = qNode.querySelectorAll("scenario > atom");
+							atoms.forEach(atom => {
+								let text = atom.textContent.trim();
+								const type = atom.getAttribute("type");
+								let fileNameOnly = text.split('/').pop().split('\\').pop().replace(/^#|#$/g, '').toLowerCase();
+
+								if (!type || type === "text") {
+									if (text.startsWith("http://") || text.startsWith("https://")) {
+										if (text.match(/\.(jpeg|jpg|gif|png)$/i)) imgLink = text;
+									} else if (localImageFiles[fileNameOnly]) {
+										imgLink = localImageFiles[fileNameOnly];
+									} else {
+										qText += (qText ? " " : "") + text;
+									}
+								} else if (type === "image") {
+									imgLink = localImageFiles[fileNameOnly] || text;
+								} else if (type === "video" && !ytLink) {
+									ytLink = text;
+								}
+							});
+
+							const params = qNode.querySelectorAll("params > param");
+							params.forEach(param => {
+								const paramName = param.getAttribute("name");
+								const items = param.querySelectorAll("item");
+
+								items.forEach(item => {
+									let text = item.textContent.trim();
+									let isRef = item.getAttribute("isRef") === "True";
+									let itemType = item.getAttribute("type");
+									let fileNameOnly = text.split('/').pop().split('\\').pop().toLowerCase();
+
+									if (paramName === "question") {
+										if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
+											imgLink = localImageFiles[fileNameOnly] || text;
+										} else if (itemType === "text" || !itemType) {
+											qText += (qText ? " " : "") + text;
+										}
+									} else if (paramName === "answer") {
+										if (itemType === "image" || isRef || text.match(/\.(jpeg|jpg|gif|png)$/i)) {
+											ansImgLink = localImageFiles[fileNameOnly] || text;
+										}
+									}
+								});
+							});
+
+							if (!qText) qText = "Вопрос на картинке";
+
+							const rights = qNode.querySelectorAll("right > answer");
+							let answersArr = [];
+							rights.forEach(ans => {
+								let ansText = ans.textContent.trim();
+								if (ansText) answersArr.push(ansText);
+							});
+							
+							aText = answersArr.length > 0 ? answersArr.join(", ") : "";
+							if (ansImgLink) {
+								aText += (aText ? "<br>" : "") + '<img src="' + ansImgLink + '" style="max-width:100%; max-height:300px; border-radius:8px; margin-top:10px;" alt="Картинка к ответу">';
+							}
+							if (!aText) aText = "Ответ не указан";
+
+							questionsList.push({
+								value: value,
+								question: qText,
+								answer: aText,
+								image: imgLink || undefined,
+								youtube: ytLink || undefined
+							});
+						});
+
+						if (questionsList.length > 0) {
+							roundCategories.push({
+								title: themeName,
+								questions: questionsList
+							});
 						}
 					});
+
+					if (roundCategories.length > 0) {
+						parsedRounds.push(roundCategories);
+					}
 				});
+
+				if (parsedRounds.length > 0) {
+					roundQuestion = parsedRounds;
+					currentRound = 0;
+					localStorage.setItem("currentRound", 0);
+					localStorage.removeItem("usedQuestions");
+					usedQuestions = {};
+					categories = roundQuestion[currentRound];
+					
+					saveDataToDB("roundQuestion", roundQuestion, function() {
+						initBoard();
+						document.querySelector('.roundText').innerHTML = 'Round ' + (currentRound + 1);
+						alert("Пакет .siq успешно загружен и сохранен!");
+					});
+				} else {
+					alert("Не удалось извлечь вопросы из структуры XML.");
+				}
+
+			} catch (err) {
+				console.error(err);
+				alert("Ошибка при разборе файла content.xml.");
 			}
 		}
 
@@ -689,7 +701,7 @@ button:hover, .file-upload-btn:hover {
 				// ЕСЛИ ТРАНСЛЯЦИИ НЕТ: скрываем ответ, ждем нажатия кнопки
 				correctAnswerEl.style.display = "none";
 				correctAnswerEl.textContent = "";
-				// document.getElementById("showAnswerBtn").disabled = false;
+				document.getElementById("showAnswerBtn").disabled = false;
 			}
 
 			document.getElementById("questionTitle").textContent = categories[catIndex].title + " " + currentQuestion.value + " очков";
